@@ -5,6 +5,8 @@ enum Tool: String, CaseIterable, Identifiable {
     case smartScan   = "Smart Scan"
     case cleanup     = "Cleanup"
     case developer   = "Developer"
+    case photos      = "Photos"
+    case privacy     = "Privacy"
     case uninstaller = "Uninstaller"
     case diskMap     = "Disk Map"
     case maintenance = "Maintenance"
@@ -15,6 +17,8 @@ enum Tool: String, CaseIterable, Identifiable {
         case .smartScan:   "wand.and.stars"
         case .cleanup:     "sparkles"
         case .developer:   "chevron.left.forwardslash.chevron.right"
+        case .photos:      "photo.on.rectangle.angled"
+        case .privacy:     "hand.raised.fill"
         case .uninstaller: "trash.square"
         case .diskMap:     "chart.pie"
         case .maintenance: "wrench.and.screwdriver"
@@ -50,10 +54,39 @@ struct RootView: View {
             case .smartScan:   SmartScanView()
             case .cleanup:     ContentView()
             case .developer:   DevReclaimView()
+            case .photos:      photosTool
+            case .privacy:     privacyTool
             case .uninstaller: UninstallerView()
             case .diskMap:     DiskMapView()
             case .maintenance: MaintenanceView()
             }
+        }
+    }
+
+    private var photosTool: some View {
+        ScannerToolView(
+            title: "Similar Photos",
+            prompt: "Find look-alike photos — burst shots and resized copies —\nin Pictures, Downloads, and Desktop.",
+            systemImage: "photo.on.rectangle.angled",
+            scanLabel: "Find Similar Photos",
+            scanners: [SimilarPhotoScanner()],
+            warning: "These are similar, not identical. Review each group — nothing is pre-selected."
+        ) { group in
+            "\(group.count) similar"
+        }
+    }
+
+    private var privacyTool: some View {
+        ScannerToolView(
+            title: "Privacy",
+            prompt: "Clear browsing history, cookies, and caches for your installed browsers.",
+            systemImage: "hand.raised.fill",
+            scanLabel: "Scan Browsers",
+            scanners: [BrowserPrivacyScanner()],
+            warning: "Quit your browsers first. Clearing cookies signs you out of websites."
+        ) { group in
+            // Items in a privacy group share a browser; show its name.
+            group.first?.label.components(separatedBy: " — ").first ?? "Browser"
         }
     }
 }

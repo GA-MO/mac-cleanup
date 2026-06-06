@@ -1,6 +1,43 @@
 import Testing
 import Foundation
+import CoreGraphics
+import ImageIO
 @testable import CleanupKit
+
+enum TestPattern { case gradient, solid }
+
+/// Temp dir plus a PNG writer, for image-based tests. Pattern controls pixels
+/// so we can assert similarity vs difference deterministically.
+private func withImageTempDir(
+    _ body: (URL, (String, Int, Int, TestPattern) throws -> Void) async throws -> Void
+) async throws {
+    let dir = FileManager.default.temporaryDirectory
+        .appending(path: "img-test-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: dir) }
+
+    let writer: (String, Int, Int, TestPattern) throws -> Void = { name, w, h, pattern in
+        let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8,
+                            bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        switch pattern {
+        case .solid:
+            ctx.setFillColor(gray: 0.5, alpha: 1)
+            ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
+        case .gradient:   // bright → dark, left to right
+            for x in 0..<w {
+                ctx.setFillColor(gray: 1 - CGFloat(x) / CGFloat(w), alpha: 1)
+                ctx.fill(CGRect(x: x, y: 0, width: 1, height: h))
+            }
+        }
+        let image = ctx.makeImage()!
+        let url = dir.appending(path: name)
+        let dest = CGImageDestinationCreateWithURL(url as CFURL, "public.png" as CFString, 1, nil)!
+        CGImageDestinationAddImage(dest, image, nil)
+        _ = CGImageDestinationFinalize(dest)
+    }
+    try await body(dir, writer)
+}
 
 /// Builds a throwaway directory tree under a temp dir, cleaned up after use.
 private func withTempTree(_ body: (URL) async throws -> Void) async throws {
@@ -253,6 +290,54 @@ private func write(_ url: URL, bytes: Int) throws {
     // The login shell should always find a core utility like `ls`.
     #expect(Shell.hasTool("ls"))
     #expect(!Shell.hasTool("definitely-not-a-real-tool-xyz"))
+}
+
+@Test func hammingDistanceCountsDifferingBits() {
+    #expect(SimilarPhotoScanner.hamming(0b1011, 0b1011) == 0)
+    #expect(SimilarPhotoScanner.hamming(0b1011, 0b1001) == 1)
+    #expect(SimilarPhotoScanner.hamming(0xFFFF, 0x0000) == 16)
+}
+
+@Test func dHashGroupsResizedCopiesOfSameImage() async throws {
+    try await withImageTempDir { dir, write in
+        // Same gradient at two sizes → should hash near-identically.
+        try write("a_big.png", 200, 200, .gradient)
+        try write("a_small.png", 80, 80, .gradient)
+        try write("b_solid.png", 200, 200, .solid)   // very different
+
+        let scanner = SimilarPhotoScanner(searchRoots: [dir], threshold: 8, maxImages: 50)
+        // Verify the hashing directly: the two gradients are close, the solid is far.
+        let hBig = SimilarPhotoScanner.dHash(of: dir.appending(path: "a_big.png"))!
+        let hSmall = SimilarPhotoScanner.dHash(of: dir.appending(path: "a_small.png"))!
+        let hSolid = SimilarPhotoScanner.dHash(of: dir.appending(path: "b_solid.png"))!
+        #expect(SimilarPhotoScanner.hamming(hBig, hSmall) <= 8)
+        #expect(SimilarPhotoScanner.hamming(hBig, hSolid) > 8)
+
+        let items = await scanner.scanAll()
+        // The two gradients form one similar group; the solid stands alone.
+        let labels = Set(items.map(\.label))
+        #expect(labels.contains("a_big.png"))
+        #expect(labels.contains("a_small.png"))
+        #expect(!labels.contains("b_solid.png"))
+        #expect(items.allSatisfy { $0.safety != .safe })   // photos never auto-selected
+    }
+}
+
+@Test func browserPrivacyFindsHistoryAndCookies() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appending(path: "priv-test-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let support = root.appending(path: "Google/Chrome")
+    try write(support.appending(path: "Default/History"), bytes: 5000)
+    try write(support.appending(path: "Default/Network/Cookies"), bytes: 3000)
+
+    let chrome = BrowserPrivacyScanner.Browser(
+        name: "Google Chrome", supportBase: support, cacheBase: nil,
+        fixedHistory: [], fixedCookies: [], isChromium: true)
+    let items = await BrowserPrivacyScanner(browsers: [chrome]).scanAll()
+
+    #expect(items.contains { $0.label.contains("History") && $0.safety == .review })
+    #expect(items.contains { $0.label.contains("Cookies") && $0.safety == .caution })
 }
 
 @Test func removeThenRestoreRoundTripsViaTrash() async throws {

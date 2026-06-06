@@ -23,6 +23,8 @@ public enum CleanupCategory: String, Sendable, CaseIterable, Codable {
     case largeFiles    = "Large & Old Files"
     case duplicates    = "Duplicates"
     case downloads     = "Downloads & Installers"
+    case similarPhotos = "Similar Photos"
+    case privacy       = "Privacy"
 
     public var systemImage: String {
         switch self {
@@ -32,6 +34,8 @@ public enum CleanupCategory: String, Sendable, CaseIterable, Codable {
         case .largeFiles:    "externaldrive.fill"
         case .duplicates:    "doc.on.doc.fill"
         case .downloads:     "arrow.down.circle.fill"
+        case .similarPhotos: "photo.on.rectangle.angled"
+        case .privacy:       "hand.raised.fill"
         }
     }
 }
