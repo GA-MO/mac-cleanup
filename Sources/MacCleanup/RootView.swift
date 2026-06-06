@@ -2,6 +2,7 @@ import SwiftUI
 import CleanupKit
 
 enum Tool: String, CaseIterable, Identifiable {
+    case smartScan   = "Smart Scan"
     case cleanup     = "Cleanup"
     case developer   = "Developer"
     case uninstaller = "Uninstaller"
@@ -11,6 +12,7 @@ enum Tool: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var systemImage: String {
         switch self {
+        case .smartScan:   "wand.and.stars"
         case .cleanup:     "sparkles"
         case .developer:   "chevron.left.forwardslash.chevron.right"
         case .uninstaller: "trash.square"
@@ -23,7 +25,7 @@ enum Tool: String, CaseIterable, Identifiable {
 /// Top-level shell: a sidebar of tools, each driving its own detail view.
 struct RootView: View {
     @Environment(AppModel.self) private var model
-    @State private var tool: Tool = .cleanup
+    @State private var tool: Tool = .smartScan
     @AppStorage("hasOnboarded") private var hasOnboarded = false
 
     var body: some View {
@@ -45,6 +47,7 @@ struct RootView: View {
             .safeAreaInset(edge: .bottom) { DiskGauge() }
         } detail: {
             switch tool {
+            case .smartScan:   SmartScanView()
             case .cleanup:     ContentView()
             case .developer:   DevReclaimView()
             case .uninstaller: UninstallerView()
