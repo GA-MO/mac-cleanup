@@ -55,6 +55,17 @@ open "build/Mac Cleanup.app"
 Then grant **Full Disk Access** in *System Settings → Privacy & Security* for
 complete results (some system caches are otherwise unreadable).
 
+## Build a distributable DMG
+
+```bash
+./scripts/make-dmg.sh        # → build/MacCleanup.dmg
+```
+
+Produces a compressed drag-to-install disk image (app + Applications
+shortcut). The app is ad-hoc signed, so recipients open it via right-click →
+*Open* the first time, or clear quarantine with
+`xattr -dr com.apple.quarantine "/Applications/Mac Cleanup.app"`.
+
 ## Safety design
 
 - Deletions use `FileManager.trashItem` — recoverable from Trash.
