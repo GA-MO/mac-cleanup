@@ -24,8 +24,16 @@ enum Tool: String, CaseIterable, Identifiable {
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @State private var tool: Tool = .cleanup
+    @AppStorage("hasOnboarded") private var hasOnboarded = false
 
     var body: some View {
+        content
+            .sheet(isPresented: Binding(get: { !hasOnboarded }, set: { hasOnboarded = !$0 })) {
+                OnboardingView { hasOnboarded = true }
+            }
+    }
+
+    private var content: some View {
         NavigationSplitView {
             List(Tool.allCases, selection: $tool) { t in
                 NavigationLink(value: t) {

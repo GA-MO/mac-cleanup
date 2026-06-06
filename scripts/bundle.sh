@@ -23,6 +23,11 @@ sed -e "s/__EXECUTABLE__/$EXECUTABLE/g" \
     -e "s/__BUNDLE_ID__/$BUNDLE_ID/g" \
     scripts/Info.plist.template > "$APP_DIR/Contents/Info.plist"
 
+# App icon (generate with: swift scripts/make-icon.swift && iconutil -c icns …)
+if [ -f Resources/AppIcon.icns ]; then
+    cp Resources/AppIcon.icns "$APP_DIR/Contents/Resources/AppIcon.icns"
+fi
+
 # Ad-hoc sign so macOS lets the app keep its Full Disk Access grant across
 # rebuilds. (No paid Developer ID needed for personal use.)
 echo "▸ Ad-hoc signing…"
