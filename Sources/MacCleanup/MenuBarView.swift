@@ -48,6 +48,11 @@ struct MenuBarView: View {
         }
         .padding(14)
         .frame(width: 260)
-        .task { info = VolumeInfo.current() }
+        .task {
+            while !Task.isCancelled {
+                info = VolumeInfo.current()
+                try? await Task.sleep(for: .seconds(5))
+            }
+        }
     }
 }

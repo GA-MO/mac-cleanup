@@ -102,6 +102,7 @@ struct DoneView: View {
                 Text("Removed items are in your Trash if you need them back.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                PostCleanFooter(failures: model.lastResults.filter { !$0.succeeded })
             }
 
             HStack {

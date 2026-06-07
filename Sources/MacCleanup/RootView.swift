@@ -108,6 +108,12 @@ struct DiskGauge: View {
             }
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
-        .task { info = VolumeInfo.current() }
+        .task {
+            // Poll so the gauge reflects space freed by cleanups / emptying Trash.
+            while !Task.isCancelled {
+                info = VolumeInfo.current()
+                try? await Task.sleep(for: .seconds(3))
+            }
+        }
     }
 }

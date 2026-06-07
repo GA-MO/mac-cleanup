@@ -49,14 +49,17 @@ final class ScannerToolModel {
         if selection.contains(item.id) { selection.remove(item.id) } else { selection.insert(item.id) }
     }
 
+    private(set) var failures: [RemovalResult] = []
+
     func clean() async {
         phase = .cleaning
         let removed = await engine.remove(selectedItems, dryRun: false)
+        failures = removed.filter { !$0.succeeded }
         let freed = removed.filter(\.succeeded).reduce(Int64(0)) { $0 + $1.item.size }
         phase = .done(freed)
     }
 
-    func reset() { phase = .idle; items = []; selection = [] }
+    func reset() { phase = .idle; items = []; selection = []; failures = [] }
 }
 
 struct ScannerToolView: View {
@@ -123,6 +126,7 @@ struct ScannerToolView: View {
                 Text("Removed items are in your Trash if you need them back.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            PostCleanFooter(failures: model.failures)
             HStack {
                 Button("Scan Again") { Task { await model.scan() } }.buttonStyle(.borderedProminent)
                 Button("Done") { model.reset() }

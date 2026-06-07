@@ -83,10 +83,14 @@ final class SmartScanModel {
         for i in items where i.category == cat { itemSelection.remove(i.id) }
     }
 
+    /// Items that couldn't be moved to the Trash (in-use / permission).
+    private(set) var failures: [RemovalResult] = []
+
     func clean() async {
         phase = .cleaning
         // Cleanup items → Trash.
         let removed = await engine.remove(selectedItems, dryRun: false)
+        failures = removed.filter { !$0.succeeded }
         var freed = removed.filter(\.succeeded).reduce(Int64(0)) { $0 + $1.item.size }
         // Developer caches → each tool's cleanup; count the estimate as freed.
         for task in devTasks where devSelection.contains(task.id) {
@@ -96,7 +100,10 @@ final class SmartScanModel {
         phase = .done(freed)
     }
 
-    func reset() { phase = .idle; items = []; itemSelection = []; devTasks = []; devSelection = [] }
+    func reset() {
+        phase = .idle; items = []; itemSelection = []
+        devTasks = []; devSelection = []; failures = []
+    }
 }
 
 struct SmartScanView: View {
@@ -143,8 +150,9 @@ struct SmartScanView: View {
         VStack(spacing: 18) {
             Image(systemName: "checkmark.circle.fill").font(.system(size: 56)).foregroundStyle(.green)
             Text("Freed \(freed.formattedSize)").font(.largeTitle.bold())
-            Text("Cleanup items are in your Trash. Developer caches were cleared in place.")
+            Text("Developer caches were cleared in place. Cleanup items moved to the Trash.")
                 .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            PostCleanFooter(failures: m.failures)
             HStack {
                 Button("Scan Again") { Task { await m.scan() } }.buttonStyle(.borderedProminent)
                 Button("Done") { m.reset() }
