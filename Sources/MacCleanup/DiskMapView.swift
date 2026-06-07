@@ -74,8 +74,19 @@ struct DiskMapView: View {
         }
         .navigationTitle("Disk Map")
         .toolbar {
-            Button("Choose Folder…") { chooseFolder() }
-            Button("Scan Home") { Task { await m.build(at: home) } }
+            ToolbarItem(placement: .primaryAction) {
+                HStack(spacing: 8) {
+                    Button { chooseFolder() } label: {
+                        Label("Choose Folder", systemImage: "folder")
+                    }
+                    Button { Task { await m.build(at: home) } } label: {
+                        Label("Scan Home", systemImage: "house")
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .labelStyle(.titleAndIcon)
+                .padding(.trailing, 6)
+            }
         }
         .confirmationDialog(
             "Move “\(pendingTrash?.name ?? "")” to Trash?",

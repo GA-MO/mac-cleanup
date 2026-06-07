@@ -72,13 +72,22 @@ struct DevReclaimView: View {
         }
         .navigationTitle("Developer Reclaim")
         .toolbar {
-            if !m.tasks.isEmpty {
-                if m.totalEstimated > 0 {
-                    Text("~\(m.totalEstimated.formattedSize) reclaimable")
-                        .foregroundStyle(.secondary).monospacedDigit()
+            ToolbarItem(placement: .primaryAction) {
+                if !m.tasks.isEmpty {
+                    HStack(spacing: 10) {
+                        if m.totalEstimated > 0 {
+                            Text("~\(m.totalEstimated.formattedSize) reclaimable")
+                                .foregroundStyle(.secondary).monospacedDigit()
+                        }
+                        Button { Task { await m.runAll() } } label: {
+                            Label("Run All", systemImage: "bolt.fill")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .labelStyle(.titleAndIcon)
+                        .disabled(!m.running.isEmpty)
+                    }
+                    .padding(.trailing, 6)
                 }
-                Button("Run All") { Task { await m.runAll() } }
-                    .disabled(!m.running.isEmpty)
             }
         }
         .task { await m.load() }
