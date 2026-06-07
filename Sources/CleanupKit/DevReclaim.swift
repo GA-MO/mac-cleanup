@@ -80,8 +80,10 @@ public enum DevReclaim {
         .init(id: "bun", title: "Bun — Clear Cache",
               detail: "Clears Bun's global install cache (~/.bun/install/cache)",
               systemImage: "b.circle", requiresTool: "bun",
-              command: "bun pm cache rm && echo 'Done.'",
-              estimateCommand: duBytes(#""$HOME/.bun/install/cache""#)),
+              // `bun pm cache rm` requires a project (package.json); remove the
+              // global cache dir directly — Bun recreates it on demand.
+              command: #"rm -rf "${BUN_INSTALL_CACHE_DIR:-${BUN_INSTALL:-$HOME/.bun}/install/cache}" && echo 'Done.'"#,
+              estimateCommand: duBytes(#""${BUN_INSTALL_CACHE_DIR:-${BUN_INSTALL:-$HOME/.bun}/install/cache}""#)),
         .init(id: "pip", title: "pip — Purge Cache",
               detail: "Clears the pip download/wheel cache",
               systemImage: "ladybug", requiresTool: "pip3",

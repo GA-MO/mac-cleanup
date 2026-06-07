@@ -20,6 +20,9 @@ public enum Shell {
         process.executableURL = URL(filePath: "/bin/zsh")
         // -i -l so both ~/.zshrc (nvm, etc.) and ~/.zprofile (brew) are sourced.
         process.arguments = ["-i", "-l", "-c", command]
+        // A Finder-launched app inherits CWD "/", which trips tools that expect
+        // a project (e.g. bun); run from the user's home instead.
+        process.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser
 
         do {
             try process.run()
