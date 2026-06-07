@@ -50,16 +50,28 @@ final class ScannerToolModel {
     }
 
     private(set) var failures: [RemovalResult] = []
+    private(set) var lastRemoval: [RemovalResult] = []
+
+    var canUndo: Bool { lastRemoval.contains { $0.canRestore } }
+    var trashedCount: Int { lastRemoval.filter(\.canRestore).count }
 
     func clean() async {
         phase = .cleaning
         let removed = await engine.remove(selectedItems, dryRun: false)
         failures = removed.filter { !$0.succeeded }
+        lastRemoval = removed
         let freed = removed.filter(\.succeeded).reduce(Int64(0)) { $0 + $1.item.size }
         phase = .done(freed)
     }
 
-    func reset() { phase = .idle; items = []; selection = []; failures = [] }
+    func undo() async -> String {
+        let restored = await engine.restore(lastRemoval)
+        let ok = restored.filter(\.succeeded).count
+        lastRemoval = []
+        return "Restored \(ok) item(s) to their original locations."
+    }
+
+    func reset() { phase = .idle; items = []; selection = []; failures = []; lastRemoval = [] }
 }
 
 struct ScannerToolView: View {
@@ -126,7 +138,9 @@ struct ScannerToolView: View {
                 Text("Removed items are in your Trash if you need them back.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            PostCleanFooter(failures: model.failures)
+            PostCleanFooter(failures: model.failures,
+                            trashedItems: model.trashedCount,
+                            onUndo: model.canUndo ? { await model.undo() } : nil)
             HStack {
                 Button("Scan Again") { Task { await model.scan() } }.buttonStyle(.borderedProminent)
                 Button("Done") { model.reset() }

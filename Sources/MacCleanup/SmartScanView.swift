@@ -85,12 +85,18 @@ final class SmartScanModel {
 
     /// Items that couldn't be moved to the Trash (in-use / permission).
     private(set) var failures: [RemovalResult] = []
+    /// Trashed items from the last clean, kept so they can be restored.
+    private(set) var lastRemoval: [RemovalResult] = []
+
+    var canUndo: Bool { lastRemoval.contains { $0.canRestore } }
+    var trashedCount: Int { lastRemoval.filter(\.canRestore).count }
 
     func clean() async {
         phase = .cleaning
         // Cleanup items → Trash.
         let removed = await engine.remove(selectedItems, dryRun: false)
         failures = removed.filter { !$0.succeeded }
+        lastRemoval = removed
         var freed = removed.filter(\.succeeded).reduce(Int64(0)) { $0 + $1.item.size }
         // Developer caches → each tool's cleanup; count the estimate as freed.
         for task in devTasks where devSelection.contains(task.id) {
@@ -100,9 +106,18 @@ final class SmartScanModel {
         phase = .done(freed)
     }
 
+    /// Restore the trashed cleanup items. Developer caches already cleared in
+    /// place can't be undone.
+    func undo() async -> String {
+        let restored = await engine.restore(lastRemoval)
+        let ok = restored.filter(\.succeeded).count
+        lastRemoval = []
+        return "Restored \(ok) item(s). Developer caches already cleared can't be undone."
+    }
+
     func reset() {
         phase = .idle; items = []; itemSelection = []
-        devTasks = []; devSelection = []; failures = []
+        devTasks = []; devSelection = []; failures = []; lastRemoval = []
     }
 }
 
@@ -152,7 +167,9 @@ struct SmartScanView: View {
             Text("Freed \(freed.formattedSize)").font(.largeTitle.bold())
             Text("Developer caches were cleared in place. Cleanup items moved to the Trash.")
                 .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            PostCleanFooter(failures: m.failures)
+            PostCleanFooter(failures: m.failures,
+                            trashedItems: m.trashedCount,
+                            onUndo: m.canUndo ? { await m.undo() } : nil)
             HStack {
                 Button("Scan Again") { Task { await m.scan() } }.buttonStyle(.borderedProminent)
                 Button("Done") { m.reset() }

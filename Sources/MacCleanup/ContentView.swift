@@ -94,27 +94,16 @@ struct DoneView: View {
                 Text("\(failures) item(s) couldn't be removed.")
                     .foregroundStyle(.secondary)
             }
-            if let summary = model.restoreSummary {
-                Label(summary, systemImage: "arrow.uturn.backward.circle.fill")
-                    .font(.callout)
-                    .foregroundStyle(.green)
-            } else {
-                Text("Removed items are in your Trash if you need them back.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                PostCleanFooter(failures: model.lastResults.filter { !$0.succeeded })
-            }
+            Text("Removed items are in your Trash if you need them back.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            PostCleanFooter(failures: model.lastResults.filter { !$0.succeeded },
+                            trashedItems: model.lastResults.filter(\.canRestore).count,
+                            onUndo: model.canUndo ? { await model.undo() } : nil)
 
             HStack {
                 Button("Scan Again") { Task { await model.startScan() } }
                     .buttonStyle(.borderedProminent)
-                if model.canUndo {
-                    Button {
-                        Task { await model.undoLastClean() }
-                    } label: {
-                        Label("Undo — Restore Files", systemImage: "arrow.uturn.backward")
-                    }
-                }
                 Button("Done") { model.reset() }
             }
             .controlSize(.large)

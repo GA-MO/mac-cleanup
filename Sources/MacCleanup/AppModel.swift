@@ -32,8 +32,6 @@ final class AppModel {
     var selection: Set<UUID> = []
     /// Log of the most recent removal, kept so the user can undo it.
     var lastResults: [RemovalResult] = []
-    /// Set after a successful Undo to confirm what came back.
-    var restoreSummary: String?
 
     /// True while the last cleanup can still be reversed from the Trash.
     var canUndo: Bool { lastResults.contains { $0.canRestore } }
@@ -112,18 +110,17 @@ final class AppModel {
         items.removeAll { removedIDs.contains($0.id) }
         selection.subtract(removedIDs)
 
-        restoreSummary = nil
         phase = .done(reclaimed: reclaimed, failures: failures)
     }
 
-    /// Move the last cleanup's items back out of the Trash.
-    func undoLastClean() async {
+    /// Move the last cleanup's items back out of the Trash. Returns a summary.
+    func undo() async -> String {
         let restored = await engine.restore(lastResults)
         let ok = restored.filter(\.succeeded).count
         let failed = restored.count - ok
-        restoreSummary = "Restored \(ok) item(s) to their original locations"
-            + (failed > 0 ? " · \(failed) couldn't be restored" : "")
         lastResults = []   // can't undo twice
+        return "Restored \(ok) item(s) to their original locations"
+            + (failed > 0 ? " · \(failed) couldn't be restored" : "")
     }
 
     func reset() {
@@ -131,6 +128,5 @@ final class AppModel {
         items = []
         selection = []
         lastResults = []
-        restoreSummary = nil
     }
 }
