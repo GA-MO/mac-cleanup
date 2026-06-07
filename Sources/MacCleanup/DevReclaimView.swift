@@ -82,11 +82,10 @@ struct DevReclaimView: View {
                         Button { Task { await m.runAll() } } label: {
                             Label("Run All", systemImage: "bolt.fill")
                         }
-                        .buttonStyle(.borderedProminent)
                         .labelStyle(.titleAndIcon)
                         .disabled(!m.running.isEmpty)
                     }
-                    .padding(.trailing, 6)
+                    .padding(.trailing, 16)
                 }
             }
         }

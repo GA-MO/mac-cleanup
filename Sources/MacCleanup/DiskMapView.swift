@@ -82,10 +82,9 @@ struct DiskMapView: View {
                     Button { Task { await m.build(at: home) } } label: {
                         Label("Scan Home", systemImage: "house")
                     }
-                    .buttonStyle(.borderedProminent)
                 }
                 .labelStyle(.titleAndIcon)
-                .padding(.trailing, 6)
+                .padding(.trailing, 16)
             }
         }
         .confirmationDialog(
